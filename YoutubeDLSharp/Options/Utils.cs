@@ -36,7 +36,7 @@ namespace YoutubeDLSharp.Options
             else if (value is Enum)
                 val = $" \"{value.ToString().ToLower()}\"";
             else if (value is DateTime dateTime)
-                val = $" {dateTime.ToString("yyyyMMdd")}";
+                val = $" {dateTime:yyyyMMdd}";
             else if (value is string)
                 val = $" \"{value}\"";
             else val = " " + value;

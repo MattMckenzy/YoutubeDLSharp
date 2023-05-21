@@ -14,7 +14,7 @@ namespace YoutubeDLSharp.Converters
             var value = (string)reader.Value;
             if(value == null)
             {
-                return default(T);
+                return default;
             }
             var jsonString = $"'{value.ToLower()}'";
             var enumValue = JsonConvert.DeserializeObject<T>(jsonString, new StringEnumConverter());
