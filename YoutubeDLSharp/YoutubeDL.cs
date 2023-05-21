@@ -237,10 +237,10 @@ namespace YoutubeDLSharp
         {
             var opts = GetDownloadOptions();
             opts.NoPlaylist = false;
-            opts.PlaylistStart = start;
-            opts.PlaylistEnd = end;
             if (items != null)
                 opts.PlaylistItems = String.Join(",", items);
+            else
+                opts.PlaylistItems = $"{start}:{end}";
             opts.Format = format;
             opts.RecodeVideo = recodeFormat;
             if (overrideOptions != null)
@@ -329,10 +329,10 @@ namespace YoutubeDLSharp
             var outputFiles = new List<string>();
             var opts = GetDownloadOptions();
             opts.NoPlaylist = false;
-            opts.PlaylistStart = start;
-            opts.PlaylistEnd = end;
             if (items != null)
                 opts.PlaylistItems = String.Join(",", items);
+            else
+                opts.PlaylistItems = $"{start}:{end}";
             opts.Format = "bestaudio/best";
             opts.ExtractAudio = true;
             opts.AudioFormat = format;
