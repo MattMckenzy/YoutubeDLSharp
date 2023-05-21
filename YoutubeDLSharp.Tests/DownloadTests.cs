@@ -15,7 +15,9 @@ namespace YoutubeDLSharp.Tests
         private static List<string> downloadedFiles;
 
         [ClassInitialize]
+#pragma warning disable IDE0060 // Parameter used during automated test runs
         public static async Task Initialize(TestContext context)
+#pragma warning restore IDE0060 // Parameter used during automated test runs
         {
             await PrepTests.DownloadBinaries();
             ydl = new YoutubeDL

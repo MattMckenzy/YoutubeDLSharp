@@ -21,14 +21,13 @@ namespace YoutubeDLSharp.Helpers
 
         public static void KillTree(this Process process, TimeSpan timeout)
         {
-            string stdout;
             if (OSHelper.IsWindows)
             {
                 RunProcessAndWaitForExit(
                     "taskkill",
                     $"/T /F /PID {process.Id}",
                     timeout,
-                    out stdout);
+                    out _);
             }
             else
             {
@@ -44,12 +43,11 @@ namespace YoutubeDLSharp.Helpers
 
         private static void GetAllChildIdsUnix(int parentId, ISet<int> children, TimeSpan timeout)
         {
-            string stdout;
             var exitCode = RunProcessAndWaitForExit(
                 "pgrep",
                 $"-P {parentId}",
                 timeout,
-                out stdout);
+                out string stdout);
 
             if (exitCode == 0 && !string.IsNullOrEmpty(stdout))
             {
@@ -63,8 +61,7 @@ namespace YoutubeDLSharp.Helpers
                             return;
                         }
 
-                        int id;
-                        if (int.TryParse(text, out id))
+                        if (int.TryParse(text, out int id))
                         {
                             children.Add(id);
                             GetAllChildIdsUnix(id, children, timeout);
@@ -76,12 +73,11 @@ namespace YoutubeDLSharp.Helpers
 
         private static void KillProcessUnix(int processId, TimeSpan timeout)
         {
-            string stdout;
             RunProcessAndWaitForExit(
                 "kill",
                 $"-TERM {processId}",
                 timeout,
-                out stdout);
+                out _);
         }
 
         private static int RunProcessAndWaitForExit(string fileName, string arguments, TimeSpan timeout, out string stdout)

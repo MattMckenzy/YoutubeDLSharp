@@ -61,7 +61,7 @@ namespace YoutubeDLSharp
             this.ExecutablePath = executablePath;
         }
 
-        internal string ConvertToArgs(string[] urls, OptionSet options)
+        internal static string ConvertToArgs(string[] urls, OptionSet options)
             => (urls != null ? String.Join(" ", urls.Select(s => $"\"{s}\"")) : String.Empty) + options.ToString();
 
         /// <summary>

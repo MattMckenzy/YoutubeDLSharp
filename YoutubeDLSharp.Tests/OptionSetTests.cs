@@ -12,9 +12,9 @@ namespace YoutubeDLSharp.Tests
         [TestMethod]
         public void TestSimpleOptionFromString()
         {
-            Option<string> stringOption = new Option<string>("-s");
-            Option<bool> boolOption = new Option<bool>("--bool");
-            Option<int> intOption = new Option<int>("--int", "-i");
+            Option<string> stringOption = new("-s");
+            Option<bool> boolOption = new("--bool");
+            Option<int> intOption = new("--int", "-i");
             stringOption.SetFromString("-s someValue");
             Assert.AreEqual("someValue", stringOption.Value);
             boolOption.SetFromString("--bool");
@@ -26,7 +26,7 @@ namespace YoutubeDLSharp.Tests
         [TestMethod]
         public void TestEnumOptionFromString()
         {
-            Option<VideoRecodeFormat> videoOption = new Option<VideoRecodeFormat>("--vid");
+            Option<VideoRecodeFormat> videoOption = new("--vid");
             videoOption.SetFromString("--vid mp4");
             Assert.AreEqual(VideoRecodeFormat.Mp4, videoOption.Value);
         }
@@ -34,7 +34,7 @@ namespace YoutubeDLSharp.Tests
         [TestMethod]
         public void TestComplexOptionFromString()
         {
-            Option<DateTime> dateOption = new Option<DateTime>("-d");
+            Option<DateTime> dateOption = new("-d");
             dateOption.SetFromString("-d 20200322");
             Assert.AreEqual(new DateTime(2020, 03, 22), dateOption.Value);
         }
@@ -85,7 +85,7 @@ namespace YoutubeDLSharp.Tests
         [TestMethod]
         public void TestCustomOptionSetFromString()
         {
-            void AssertCustomOption(IOption option)
+            static void AssertCustomOption(IOption option)
             {
                 Assert.IsTrue(option.OptionStrings.Any());
                 Assert.IsTrue(option.IsCustom);
@@ -122,7 +122,7 @@ namespace YoutubeDLSharp.Tests
         public void TestCustomOptionSetByMethod()
         {
             // Can create custom options (also multiple with same name)
-            OptionSet options = new OptionSet();
+            OptionSet options = new();
             options.AddCustomOption("--custom-string-option", "hello");
             options.AddCustomOption("--custom-bool-option", true);
             options.AddCustomOption("--custom-string-option", "world");

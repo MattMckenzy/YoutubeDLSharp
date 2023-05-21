@@ -12,7 +12,7 @@ namespace YoutubeDLSharp.Helpers
     public class ProcessRunner
     {
         private const int MAX_COUNT = 100;
-        private SemaphoreSlim semaphore;
+        private readonly SemaphoreSlim semaphore;
 
         public byte TotalCount { get; private set; }
 
@@ -39,13 +39,13 @@ namespace YoutubeDLSharp.Helpers
             }
         }
 
-        private void incrementCount(byte incr)
+        private void IncrementCount(byte incr)
         {
             semaphore.Release(incr);
             TotalCount += incr;
         }
 
-        private async Task decrementCount(byte decr)
+        private async Task DecrementCount(byte decr)
         {
             Task[] decrs = new Task[decr];
             for (int i = 0; i < decr; i++)
@@ -59,9 +59,9 @@ namespace YoutubeDLSharp.Helpers
             if (count < 1 || count > MAX_COUNT)
                 throw new ArgumentException($"Number of threads must be between 1 and {MAX_COUNT}.");
             if (count > TotalCount)
-                incrementCount((byte)(count - TotalCount));
+                IncrementCount((byte)(count - TotalCount));
             else if (count < TotalCount)
-                await decrementCount((byte)(TotalCount - count));
+                await DecrementCount((byte)(TotalCount - count));
         }
     }
 }

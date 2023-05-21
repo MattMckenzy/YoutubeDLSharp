@@ -108,7 +108,7 @@ namespace YoutubeDLSharp
             string outFile = string.Empty;
             var process = new YoutubeDLProcess(YoutubeDLPath);
             if (showArgs)
-                output?.Report($"Arguments: {process.ConvertToArgs(new[] { url }, options)}\n");
+                output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs(new[] { url }, options)}\n");
             else
                 output?.Report($"Starting Download: {url}");
             process.OutputReceived += (o, e) =>
@@ -200,7 +200,7 @@ namespace YoutubeDLSharp
             string outputFile = String.Empty;
             var process = new YoutubeDLProcess(YoutubeDLPath);
             // Report the used ytdl args
-            output?.Report($"Arguments: {process.ConvertToArgs(new[] { url }, opts)}\n");
+            output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs(new[] { url }, opts)}\n");
             process.OutputReceived += (o, e) =>
             {
                 var match = rgxFile.Match(e.Data);
@@ -254,7 +254,7 @@ namespace YoutubeDLSharp
             var outputFiles = new List<string>();
             var process = new YoutubeDLProcess(YoutubeDLPath);
             // Report the used ytdl args
-            output?.Report($"Arguments: {process.ConvertToArgs(new[] { url }, opts)}\n");
+            output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs(new[] { url }, opts)}\n");
             process.OutputReceived += (o, e) =>
             {
                 var match = rgxFile.Match(e.Data);
@@ -298,7 +298,7 @@ namespace YoutubeDLSharp
             var error = new List<string>();
             var process = new YoutubeDLProcess(YoutubeDLPath);
             // Report the used ytdl args
-            output?.Report($"Arguments: {process.ConvertToArgs(new[] { url }, opts)}\n");
+            output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs(new[] { url }, opts)}\n");
             process.OutputReceived += (o, e) =>
             {
                 var match = rgxFile.Match(e.Data);
@@ -350,7 +350,7 @@ namespace YoutubeDLSharp
             }
             var process = new YoutubeDLProcess(YoutubeDLPath);
             // Report the used ytdl args
-            output?.Report($"Arguments: {process.ConvertToArgs(new[] { url }, opts)}\n");
+            output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs(new[] { url }, opts)}\n");
             process.OutputReceived += (o, e) =>
             {
                 var match = rgxFile.Match(e.Data);

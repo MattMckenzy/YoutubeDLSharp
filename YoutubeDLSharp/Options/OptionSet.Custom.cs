@@ -5,7 +5,7 @@ namespace YoutubeDLSharp.Options
 {
     public partial class OptionSet
     {
-        public IOption[] CustomOptions { get; set; } = new IOption[0];
+        public IOption[] CustomOptions { get; set; } = Array.Empty<IOption>();
 
         /// <summary>
         /// Adds a new option to the list of custom options of this OptionSet.
@@ -14,8 +14,10 @@ namespace YoutubeDLSharp.Options
         /// <param name="value">The option value.</param>
         public void AddCustomOption<T>(string optionString, T value)
         {
-            Option<T> option = new Option<T>(true, optionString);
-            option.Value = value;
+            Option<T> option = new Option<T>(true, optionString)
+            {
+                Value = value
+            };
             CustomOptions = CustomOptions.Concat(new[] { option }).ToArray();
         }
 
