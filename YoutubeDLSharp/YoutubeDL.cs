@@ -18,7 +18,7 @@ namespace YoutubeDLSharp
     public class YoutubeDL
     {
         private static readonly Regex rgxFile = new Regex(@"^outfile:\s\""?(.*)\""?", RegexOptions.Compiled);
-        private static Regex rgxFilePostProc = new Regex(@"\[download\] Destination: [a-zA-Z]:\\\S+\.\S{3,}", RegexOptions.Compiled);
+        private static readonly Regex rgxFilePostProc = new Regex(@"\[download\] Destination: [a-zA-Z]:\\\S+\.\S{3,}", RegexOptions.Compiled);
 
         protected ProcessRunner runner;
 
@@ -102,8 +102,8 @@ namespace YoutubeDLSharp
         /// <param name="output">A progress provider used to capture the standard output.</param>
         /// <param name="showArgs">When true, outputs full download arguments</param>
         /// <returns>A RunResult object containing the path to the downloaded and converted video.</returns>
-        public async Task<RunResult<string>> RunWithOptions(string url, OptionSet options, CancellationToken ct = default,
-            IProgress<DownloadProgress> progress = null, IProgress<string> output = null, bool showArgs = true)
+        public async Task<RunResult<string>> RunWithOptions(string url, OptionSet options, IProgress<DownloadProgress> progress = null,
+             IProgress<string> output = null, bool showArgs = true, CancellationToken ct = default)
         {
             string outFile = string.Empty;
             var process = new YoutubeDLProcess(YoutubeDLPath);
@@ -148,10 +148,10 @@ namespace YoutubeDLSharp
         /// <param name="overrideOptions">Override options of the default option set for this run.</param>
         /// <returns>A RunResult object containing a VideoData object with the requested video information.</returns>
         public async Task<RunResult<VideoData>> RunVideoDataFetch(string url,
-            CancellationToken ct = default,
             bool flat = true,
             bool fetchComments = false,
-            OptionSet overrideOptions = null)
+            OptionSet overrideOptions = null,
+            CancellationToken ct = default)
         {
             var opts = GetDownloadOptions();
             opts.DumpSingleJson = true;
@@ -184,8 +184,10 @@ namespace YoutubeDLSharp
             string format = "bestvideo+bestaudio/best",
             DownloadMergeFormat mergeFormat = DownloadMergeFormat.Unspecified,
             VideoRecodeFormat recodeFormat = VideoRecodeFormat.None,
-            CancellationToken ct = default, IProgress<DownloadProgress> progress = null,
-            IProgress<string> output = null, OptionSet overrideOptions = null)
+            IProgress<string> output = null, 
+            OptionSet overrideOptions = null,
+            IProgress<DownloadProgress> progress = null,
+            CancellationToken ct = default)
         {
             var opts = GetDownloadOptions();
             opts.Format = format;
@@ -228,12 +230,14 @@ namespace YoutubeDLSharp
         /// <param name="overrideOptions">Override options of the default option set for this run.</param>
         /// <returns>A RunResult object containing the paths to the downloaded and converted videos.</returns>
         public async Task<RunResult<string[]>> RunVideoPlaylistDownload(string url,
-            int? start = 1, int? end = null,
+            int? start = 1, int? end = null, 
             int[] items = null,
             string format = "bestvideo+bestaudio/best",
             VideoRecodeFormat recodeFormat = VideoRecodeFormat.None,
-            CancellationToken ct = default, IProgress<DownloadProgress> progress = null,
-            IProgress<string> output = null, OptionSet overrideOptions = null)
+            IProgress<string> output = null, 
+            OptionSet overrideOptions = null,
+            IProgress<DownloadProgress> progress = null,
+            CancellationToken ct = default)
         {
             var opts = GetDownloadOptions();
             opts.NoPlaylist = false;
@@ -277,8 +281,10 @@ namespace YoutubeDLSharp
         /// <param name="overrideOptions">Override options of the default option set for this run.</param>
         /// <returns>A RunResult object containing the path to the downloaded and converted video.</returns>
         public async Task<RunResult<string>> RunAudioDownload(string url, AudioConversionFormat format = AudioConversionFormat.Best,
-            CancellationToken ct = default, IProgress<DownloadProgress> progress = null,
-            IProgress<string> output = null, OptionSet overrideOptions = null)
+            IProgress<string> output = null, 
+            OptionSet overrideOptions = null,
+            IProgress<DownloadProgress> progress = null,
+            CancellationToken ct = default)
         {
             var opts = GetDownloadOptions();
             opts.Format = "bestaudio/best";
@@ -323,8 +329,10 @@ namespace YoutubeDLSharp
         public async Task<RunResult<string[]>> RunAudioPlaylistDownload(string url,
             int? start = 1, int? end = null,
             int[] items = null, AudioConversionFormat format = AudioConversionFormat.Best,
-            CancellationToken ct = default, IProgress<DownloadProgress> progress = null,
-            IProgress<string> output = null, OptionSet overrideOptions = null)
+            IProgress<string> output = null, 
+            OptionSet overrideOptions = null,
+            IProgress<DownloadProgress> progress = null,
+            CancellationToken ct = default)
         {
             var outputFiles = new List<string>();
             var opts = GetDownloadOptions();

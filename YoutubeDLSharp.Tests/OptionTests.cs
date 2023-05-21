@@ -46,14 +46,12 @@ namespace YoutubeDLSharp.Tests
         {
             var expected = new[]
             {
-                "--format \"mp4/bestvideo\"", "--playlist-start 10", "--playlist-end 100", "--min-views 1000"
+                "--format \"mp4/bestvideo\"", "--playlist-items \"10:100\""
             };
             var options = new OptionSet()
             {
                 Format = "mp4/bestvideo",
-                PlaylistStart = 10,
-                PlaylistEnd = 100,
-                MinViews = 1000
+                PlaylistItems = "10:100",
             };
             CollectionAssert.AreEquivalent(expected, options.GetOptionFlags().ToArray());
         }
