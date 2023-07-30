@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,10 +19,15 @@ namespace YoutubeDLSharp
     /// <summary>
     /// A class providing methods for downloading videos using yt-dlp.
     /// </summary>
-    public class YoutubeDL
+    public partial class YoutubeDL
     {
-        private static readonly Regex rgxFile = new Regex(@"^outfile:\s\""?(.*)\""?", RegexOptions.Compiled);
-        private static readonly Regex rgxFilePostProc = new Regex(@"\[download\] Destination: [a-zA-Z]:\\\S+\.\S{3,}", RegexOptions.Compiled);
+        [GeneratedRegex("^outfile:\\s\\\"?(.*)\\\"?", RegexOptions.Compiled)]
+        private static partial Regex OutfileRegex();
+        private static readonly Regex rgxFile = OutfileRegex();
+
+        [GeneratedRegex("\\[download\\] Destination: [a-zA-Z]:\\\\\\S+\\.\\S{3,}", RegexOptions.Compiled)]
+        private static partial Regex DestinationRegex();
+        private static readonly Regex rgxFilePostProc = DestinationRegex();
 
         protected ProcessRunner runner;
 
@@ -131,7 +140,7 @@ namespace YoutubeDLSharp
         /// <returns>The output of yt-dlp as string.</returns>
         public async Task<string> RunUpdate()
         {
-            string output = String.Empty;
+            string output = string.Empty;
             var process = new YoutubeDLProcess(YoutubeDLPath);
             process.OutputReceived += (o, e) => output = e.Data;
             await process.RunAsync(null, new OptionSet() { Update = true });
@@ -197,7 +206,7 @@ namespace YoutubeDLSharp
             {
                 opts = opts.OverrideOptions(overrideOptions);
             }
-            string outputFile = String.Empty;
+            string outputFile = string.Empty;
             var process = new YoutubeDLProcess(YoutubeDLPath);
             // Report the used ytdl args
             output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs(new[] { url }, opts)}\n");
@@ -242,7 +251,7 @@ namespace YoutubeDLSharp
             var opts = GetDownloadOptions();
             opts.NoPlaylist = false;
             if (items != null)
-                opts.PlaylistItems = String.Join(",", items);
+                opts.PlaylistItems = string.Join(",", items);
             else
                 opts.PlaylistItems = $"{start}:{end}";
             opts.Format = format;
@@ -294,7 +303,7 @@ namespace YoutubeDLSharp
             {
                 opts = opts.OverrideOptions(overrideOptions);
             }
-            string outputFile = String.Empty;
+            string outputFile = string.Empty;
             var error = new List<string>();
             var process = new YoutubeDLProcess(YoutubeDLPath);
             // Report the used ytdl args
@@ -338,7 +347,7 @@ namespace YoutubeDLSharp
             var opts = GetDownloadOptions();
             opts.NoPlaylist = false;
             if (items != null)
-                opts.PlaylistItems = String.Join(",", items);
+                opts.PlaylistItems = string.Join(",", items);
             else
                 opts.PlaylistItems = $"{start}:{end}";
             opts.Format = "bestaudio/best";
@@ -367,27 +376,107 @@ namespace YoutubeDLSharp
         }
 
         /// <summary>
+        /// Runs a YouToube search and slowly returns results as they come in.
+        /// </summary>
+        /// <param name="searchTerm">The URL of the playlist to be downloaded.</param>
+        /// <param name="maxResultCount">The maximum amount of search results to return.</param>
+        /// <param name="searchNewest">Whether or not to search and return the laatest videos matching the search term. True will return latest videos regardless of relevancy.</param>
+        /// <param name="overrideOptions">An OptionsSet That can override the default options.</param>
+        /// <param name="millisecondsResultWait">The amount of time to wait for any more incoming results before stopping.</param>
+        /// <param name="cancellationToken">A CancellationToken used to cancel the download.</param>
+        /// <returns>Yields returns search results.</returns>
+        public async IAsyncEnumerable<SearchResult> Search(string searchTerm,
+            int maxResultCount = 10,
+            bool searchNewest = false,
+            OptionSet overrideOptions = null,
+            int millisecondsResultWait = 5000,
+            [EnumeratorCancellation]
+            CancellationToken cancellationToken = default)
+        {
+            string propertySplit = "||split||";
+            OptionSet optionSet = GetSearchOptions();
+            optionSet.Print = new($"%(id)s{propertySplit}%(webpage_url)s{propertySplit}%(ext)s{propertySplit}%(title)s{propertySplit}%(duration)s{propertySplit}%(filesize_approx)s{propertySplit}%(thumbnail)s{propertySplit}%(channel)s{propertySplit}%(like_count)s{propertySplit}%(upload_date)s");
+            if (overrideOptions != null)
+                optionSet = optionSet.OverrideOptions(overrideOptions);
+
+            CancellationTokenSource searchCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            YoutubeDLProcess youtubeDLProcess = new(YoutubeDLPath);
+            BlockingCollection<SearchResult> searchResults = new();
+            youtubeDLProcess.OutputReceived += (_, dataReceivedEventArgs) =>
+            {
+                IEnumerable<string> properties = dataReceivedEventArgs.Data?
+                    .Split(propertySplit, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    .Select(property => string.IsNullOrWhiteSpace(property) || property.Equals("NA", StringComparison.InvariantCultureIgnoreCase) ? null : property);
+                if (properties == null || properties.Count() != 10)
+                    return;
+
+                searchCancellationTokenSource.CancelAfter(millisecondsResultWait);
+                if (searchCancellationTokenSource.IsCancellationRequested)
+                    return;
+
+                searchResults.Add(new()
+                {
+                    Id = properties.ElementAt(0),
+                    LocationUrl = properties.ElementAt(1),
+                    Container = properties.ElementAt(2),
+                    Title = properties.ElementAt(3),
+                    Runtime = double.TryParse(properties.ElementAt(4), out double runtimeParseResult) ? runtimeParseResult : null,
+                    FileSize = long.TryParse(properties.ElementAt(5), out long fileSizeParseResult) ? fileSizeParseResult : null,
+                    ThumbnailUrl = properties.ElementAt(6),
+                    Channel = properties.ElementAt(7),
+                    LikeCount = long.TryParse(properties.ElementAt(8), out long likeCountParseResult) ? likeCountParseResult : null,
+                    CreationDate = DateTime.TryParseExact(properties.ElementAt(9), "yyyyMMdd", CultureInfo.CurrentCulture, DateTimeStyles.None, out DateTime parsedCreationTime) ? parsedCreationTime : null
+                });
+            };
+            youtubeDLProcess.ErrorReceived += (_, _) => { searchCancellationTokenSource.CancelAfter(millisecondsResultWait); };
+
+            string search = $"ytsearch{(searchNewest ? "date" : string.Empty)}{maxResultCount}:{searchTerm}";
+
+            _ = youtubeDLProcess.RunAsync(new string[] { search }, optionSet, cancellationToken)
+                .ContinueWith((_) => searchCancellationTokenSource.CancelAfter(millisecondsResultWait), cancellationToken);
+
+            do
+            {
+                yield return await Task.Run(() => searchResults.Take(cancellationToken));
+            }
+            while (!searchCancellationTokenSource.IsCancellationRequested);
+        }
+
+        /// <summary>
         /// Returns an option set with default options used for most downloading operations.
         /// </summary>
         protected virtual OptionSet GetDownloadOptions()
         {
             return new OptionSet()
             {
-                IgnoreErrors = this.IgnoreDownloadErrors,
+                IgnoreErrors = IgnoreDownloadErrors,
                 IgnoreConfig = true,
                 NoPlaylist = true,
                 Downloader = "m3u8:native",
                 DownloaderArgs = "ffmpeg:-nostats -loglevel 0",
                 Output = Path.Combine(OutputFolder, OutputFileTemplate),
-                RestrictFilenames = this.RestrictFilenames,
-                ForceOverwrites = this.OverwriteFiles,
-                NoOverwrites = !this.OverwriteFiles,
+                RestrictFilenames = RestrictFilenames,
+                ForceOverwrites = OverwriteFiles,
+                NoOverwrites = !OverwriteFiles,
                 NoPart = true,
-                FfmpegLocation = Utils.GetFullPath(this.FFmpegPath),
+                FfmpegLocation = Utils.GetFullPath(FFmpegPath),
                 Exec = "echo outfile: {}"
             };
         }
 
-        #endregion        
+        /// <summary>
+        /// Returns an option set with default options used for most downloading operations.
+        /// </summary>
+        protected virtual OptionSet GetSearchOptions()
+        {
+            return new OptionSet()
+            {
+                IgnoreErrors = IgnoreDownloadErrors,
+                IgnoreConfig = true,
+                Exec = "echo outfile: {}"
+            };
+        }
+
+        #endregion
     }
 }

@@ -11,12 +11,12 @@ namespace YoutubeDLSharp.Options
     /// </summary>
     public partial class OptionSet : ICloneable
     {
-        private static readonly OptionComparer Comparer = new OptionComparer();
+        private static readonly OptionComparer Comparer = new();
         
         /// <summary>
         /// The default option set (if no options are explicitly set).
         /// </summary>
-        public static readonly OptionSet Default = new OptionSet();
+        public static readonly OptionSet Default = new();
 
         /// <summary>
         /// Writes all options to a config file with the specified path.
@@ -64,7 +64,7 @@ namespace YoutubeDLSharp.Options
             IEnumerable<FieldInfo> overrideFields = overrideOptions.GetType().GetRuntimeFields()
                 .Where(p => p.FieldType.IsGenericType && p.FieldType.GetInterfaces().Contains(typeof(IOption)));
             
-            foreach (var field in overrideFields)
+            foreach (FieldInfo field in overrideFields)
             {
                 var fieldValue = (IOption)field.GetValue(overrideOptions);
                 if (fieldValue.IsSet)

@@ -14,17 +14,23 @@ namespace YoutubeDLSharp
     /// <summary>
     /// A low-level wrapper for the yt-dlp executable.
     /// </summary>
-    public class YoutubeDLProcess
+    public partial class YoutubeDLProcess
     {
+
+        [GeneratedRegex("Downloading video (\\d+) of (\\d+)", RegexOptions.Compiled)]
+        private static partial Regex PlaylistRegex();
         // the regex used to match the currently downloaded video of a playlist.
-        private static readonly Regex rgxPlaylist = new Regex(@"Downloading video (\d+) of (\d+)", RegexOptions.Compiled);
+        private static readonly Regex rgxPlaylist = PlaylistRegex();
+
+        [GeneratedRegex("\\[download\\]\\s+(?:(?<percent>[\\d\\.]+)%(?:\\s+of\\s+\\~?\\s*(?<total>[\\d\\.\\w]+))?\\s+at\\s+(?:(?<speed>[\\d\\.\\w]+\\/s)|[\\w\\s]+)\\s+ETA\\s(?<eta>[\\d\\:]+))?", RegexOptions.Compiled)]
+        private static partial Regex ProgressRegex();
         // the regex used for matching download progress information.
-        private static readonly Regex rgxProgress = new Regex(
-            @"\[download\]\s+(?:(?<percent>[\d\.]+)%(?:\s+of\s+\~?\s*(?<total>[\d\.\w]+))?\s+at\s+(?:(?<speed>[\d\.\w]+\/s)|[\w\s]+)\s+ETA\s(?<eta>[\d\:]+))?",
-            RegexOptions.Compiled
-        );
+        private static readonly Regex rgxProgress = ProgressRegex();
+
+        [GeneratedRegex("\\[(\\w+)\\]\\s+", RegexOptions.Compiled)]
+        private static partial Regex PostProcessingRegex();
         // the regex used to match the beginning of post-processing.
-        private static readonly Regex rgxPost = new Regex(@"\[(\w+)\]\s+", RegexOptions.Compiled);
+        private static readonly Regex rgxPost = PostProcessingRegex();
 
         /// <summary>
         /// The path to the Python interpreter.
@@ -58,11 +64,11 @@ namespace YoutubeDLSharp
         /// <param name="executablePath">The path to the yt-dlp executable.</param>
         public YoutubeDLProcess(string executablePath = "yt-dlp.exe")
         {
-            this.ExecutablePath = executablePath;
+            ExecutablePath = executablePath;
         }
 
         internal static string ConvertToArgs(string[] urls, OptionSet options)
-            => (urls != null ? String.Join(" ", urls.Select(s => $"\"{s}\"")) : String.Empty) + options.ToString();
+            => (urls != null ? string.Join(" ", urls.Select(s => $"\"{s}\"")) : string.Empty) + options.ToString();
 
         /// <summary>
         /// Invokes yt-dlp with the specified parameters and options.
@@ -100,13 +106,13 @@ namespace YoutubeDLSharp
             {
                 startInfo.FileName = "cmd.exe";
                 string runCommand;
-                if (!String.IsNullOrEmpty(PythonPath))
+                if (!string.IsNullOrEmpty(PythonPath))
                     runCommand = $"{PythonPath} \"{ExecutablePath}\" {ConvertToArgs(urls, options)}";
                 else
                     runCommand = $"\"{ExecutablePath}\" {ConvertToArgs(urls, options)}";
                 startInfo.Arguments = $"/C chcp 65001 >nul 2>&1 && {runCommand}";
             }
-            else if (!String.IsNullOrEmpty(PythonPath))
+            else if (!string.IsNullOrEmpty(PythonPath))
             {
                 startInfo.FileName = PythonPath;
                 startInfo.Arguments = $"\"{ExecutablePath}\" {ConvertToArgs(urls, options)}";
