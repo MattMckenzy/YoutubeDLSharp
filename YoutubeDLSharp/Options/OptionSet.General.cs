@@ -11,6 +11,7 @@ namespace YoutubeDLSharp.Options
         private Option<bool> help = new Option<bool>("-h", "--help");
         private Option<bool> version = new Option<bool>("--version");
         private Option<bool> update = new Option<bool>("-U", "--update");
+        private Option<string> updateTo = new Option<string>("--update-to");
         private Option<bool> noUpdate = new Option<bool>("--no-update");
         private Option<bool> ignoreErrors = new Option<bool>("-i", "--ignore-errors");
         private Option<bool> noAbortOnError = new Option<bool>("--no-abort-on-error");
@@ -47,6 +48,10 @@ namespace YoutubeDLSharp.Options
         /// Update this program to the latest version
         /// </summary>
         public bool Update { get => update.Value; set => update.Value = value; }
+        /// <summary>
+        /// Update this program to the latest version
+        /// </summary>
+        public string UpdateTo { get => updateTo.Value; set => updateTo.Value = value; }
         /// <summary>
         /// Do not check for updates (default)
         /// </summary>

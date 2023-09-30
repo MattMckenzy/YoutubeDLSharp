@@ -138,12 +138,12 @@ namespace YoutubeDLSharp
         /// Runs an update of yt-dlp.
         /// </summary>
         /// <returns>The output of yt-dlp as string.</returns>
-        public async Task<string> RunUpdate()
+        public async Task<string> RunUpdate(string updateTo = null)
         {
             string output = string.Empty;
             var process = new YoutubeDLProcess(YoutubeDLPath);
             process.OutputReceived += (o, e) => output = e.Data;
-            await process.RunAsync(null, new OptionSet() { Update = true });
+            await process.RunAsync(null,  string.IsNullOrWhiteSpace(updateTo) ? new OptionSet() { Update = true } : new OptionSet() { UpdateTo = updateTo });
             return output;
         }
 
@@ -151,10 +151,46 @@ namespace YoutubeDLSharp
         /// Runs a fetch of information for the given video without downloading the video.
         /// </summary>
         /// <param name="url">The URL of the video to fetch information for.</param>
+        /// <param name="videoDataCallback">The function to callback when video data has been fetched.</param>
+        /// <param name="fetchComments">If set to true, fetch comment data for the given video.</param>
+        /// <param name="overrideOptions">Override options of the default option set for this run.</param>
         /// <param name="ct">A CancellationToken used to cancel the process.</param>
+        /// <returns>A RunResult object containing a VideoData object with the requested video information.</returns>
+        public async Task<RunResult<IEnumerable<VideoData>>> RunPlaylistDataFetch(string url,
+            Func<VideoData, Task> videoDataCallback = null,
+            bool fetchComments = false,
+            OptionSet overrideOptions = null,
+            CancellationToken ct = default)
+        {
+            var opts = GetDownloadOptions();
+            opts.DumpJson = true;
+            opts.NoPlaylist = false;
+            opts.WriteComments = fetchComments;
+            if (overrideOptions != null)
+            {
+                opts = opts.OverrideOptions(overrideOptions);
+            }
+
+            var process = new YoutubeDLProcess(YoutubeDLPath);
+            List<VideoData> videoDatas = new();
+            process.OutputReceived += async (o, e) => 
+            {
+                VideoData videoData = JsonConvert.DeserializeObject<VideoData>(e.Data);
+                videoDatas.Add(videoData);
+                await videoDataCallback(videoData);
+            };
+            (int code, string[] errors) = await runner.RunThrottled(process, new[] { url }, opts, ct);
+            return new RunResult<IEnumerable<VideoData>>(code == 0, errors, videoDatas);
+        }
+
+        /// <summary>
+        /// Runs a fetch of information for the given video without downloading the video.
+        /// </summary>
+        /// <param name="url">The URL of the video to fetch information for.</param>        
         /// <param name="flat">If set to true, does not extract information for each video in a playlist.</param>
         /// <param name="fetchComments">If set to true, fetch comment data for the given video.</param>
         /// <param name="overrideOptions">Override options of the default option set for this run.</param>
+        /// <param name="ct">A CancellationToken used to cancel the process.</param>
         /// <returns>A RunResult object containing a VideoData object with the requested video information.</returns>
         public async Task<RunResult<VideoData>> RunVideoDataFetch(string url,
             bool flat = true,
