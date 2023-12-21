@@ -198,11 +198,7 @@ namespace YoutubeDLSharp
                     tcs.TrySetCanceled();
                 try
                 {
-#if NET6_0
                     if (!process.HasExited) process.Kill(true);
-#else
-                    if (!process.HasExited) process.KillTree();
-#endif
                 }
                 catch { }
             });
