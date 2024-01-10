@@ -152,12 +152,14 @@ namespace YoutubeDLSharp
         /// </summary>
         /// <param name="url">The URL of the video to fetch information for.</param>
         /// <param name="videoDataCallback">The function to callback when video data has been fetched.</param>
+        /// <param name="errorDataCallback">The function to callback when error data was received.</param>
         /// <param name="fetchComments">If set to true, fetch comment data for the given video.</param>
         /// <param name="overrideOptions">Override options of the default option set for this run.</param>
         /// <param name="ct">A CancellationToken used to cancel the process.</param>
         /// <returns>A RunResult object containing a VideoData object with the requested video information.</returns>
         public async Task<RunResult<IEnumerable<VideoData>>> RunPlaylistDataFetch(string url,
             Func<VideoData, Task> videoDataCallback = null,
+            Func<string, Task> errorDataCallback = null,
             bool fetchComments = false,
             OptionSet overrideOptions = null,
             CancellationToken ct = default)
@@ -173,12 +175,19 @@ namespace YoutubeDLSharp
 
             var process = new YoutubeDLProcess(YoutubeDLPath);
             List<VideoData> videoDatas = new();
+
             process.OutputReceived += async (o, e) => 
             {
                 VideoData videoData = JsonConvert.DeserializeObject<VideoData>(e.Data);
                 videoDatas.Add(videoData);
                 await videoDataCallback(videoData);
             };
+            process.ErrorReceived += async (o, e) =>
+            {
+                if (!string.IsNullOrWhiteSpace(e.Data))
+                    await errorDataCallback(e.Data);
+            };
+
             (int code, string[] errors) = await runner.RunThrottled(process, new[] { url }, opts, ct);
             return new RunResult<IEnumerable<VideoData>>(code == 0, errors, videoDatas);
         }
