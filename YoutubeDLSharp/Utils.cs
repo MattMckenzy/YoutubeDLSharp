@@ -18,9 +18,9 @@ namespace YoutubeDLSharp
     /// </summary>
     public static class Utils
     {
-        private static readonly HttpClient _client = new HttpClient();
+        private static readonly HttpClient _client = new();
 
-        private static readonly Regex rgxTimestamp = new Regex("[0-9]+(?::[0-9]+)+", RegexOptions.Compiled);
+        private static readonly Regex rgxTimestamp = new("[0-9]+(?::[0-9]+)+", RegexOptions.Compiled);
         private static readonly Dictionary<char, string> accentChars
             = "ÂÃÄÀÁÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖŐØŒÙÚÛÜŰÝÞßàáâãäåæçèéêëìíîïðñòóôõöőøœùúûüűýþÿ"
                 .Zip(new[] { "A","A","A","A","A","A","AE","C","E","E","E","E","I","I","I","I","D","N",

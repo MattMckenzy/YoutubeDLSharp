@@ -67,7 +67,7 @@ namespace YoutubeDLSharp.Options
         public IEnumerable<string> ToStringCollection()
         {
             if (!IsSet) return new[] {""};
-            List<string> strings = new List<string>();
+            List<string> strings = [];
             foreach (T value in Value.Values)
             {
                 strings.Add(DefaultOptionString + Utils.OptionValueToString(value));

@@ -14,7 +14,7 @@ namespace YoutubeDLSharp.Options
         private Option<DateTime> date = new Option<DateTime>("--date");
         private Option<DateTime> dateBefore = new Option<DateTime>("--datebefore");
         private Option<DateTime> dateAfter = new Option<DateTime>("--dateafter");
-        private MultiOption<string> matchFilters = new MultiOption<string>("--match-filters");
+        private Option<string> matchFilters = new Option<string>("--match-filters");
         private Option<bool> noMatchFilter = new Option<bool>("--no-match-filter");
         private Option<bool> noPlaylist = new Option<bool>("--no-playlist");
         private Option<bool> yesPlaylist = new Option<bool>("--yes-playlist");
@@ -91,7 +91,7 @@ namespace YoutubeDLSharp.Options
         /// interactively ask whether to download each
         /// video
         /// </summary>
-        public MultiValue<string> MatchFilters { get => matchFilters.Value; set => matchFilters.Value = value; }
+        public string MatchFilters { get => matchFilters.Value; set => matchFilters.Value = value; }
         /// <summary>
         /// Do not use generic video filter (default)
         /// </summary>

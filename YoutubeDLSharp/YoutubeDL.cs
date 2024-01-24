@@ -2,9 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -19,7 +17,11 @@ namespace YoutubeDLSharp
     /// <summary>
     /// A class providing methods for downloading videos using yt-dlp.
     /// </summary>
-    public partial class YoutubeDL
+    /// <remarks>
+    /// Creates a new instance of the YoutubeDL class.
+    /// </remarks>
+    /// <param name="maxNumberOfProcesses">The maximum number of concurrent yt-dlp processes.</param>
+    public partial class YoutubeDL(byte maxNumberOfProcesses = 4)
     {
         [GeneratedRegex("^outfile:\\s\\\"?(.*)\\\"?", RegexOptions.Compiled)]
         private static partial Regex OutfileRegex();
@@ -29,7 +31,7 @@ namespace YoutubeDLSharp
         private static partial Regex DestinationRegex();
         private static readonly Regex rgxFilePostProc = DestinationRegex();
 
-        protected ProcessRunner runner;
+        protected ProcessRunner runner = new(maxNumberOfProcesses);
 
         /// <summary>
         /// Path to the yt-dlp executable.
@@ -68,15 +70,6 @@ namespace YoutubeDLSharp
             => FileVersionInfo.GetVersionInfo(Utils.GetFullPath(YoutubeDLPath)).FileVersion;
 
         /// <summary>
-        /// Creates a new instance of the YoutubeDL class.
-        /// </summary>
-        /// <param name="maxNumberOfProcesses">The maximum number of concurrent yt-dlp processes.</param>
-        public YoutubeDL(byte maxNumberOfProcesses = 4)
-        {
-            runner = new ProcessRunner(maxNumberOfProcesses);
-        }
-
-        /// <summary>
         /// Sets the maximal number of parallel download processes.
         /// </summary>
         /// <param name="count"></param>
@@ -98,7 +91,7 @@ namespace YoutubeDLSharp
             var process = new YoutubeDLProcess(YoutubeDLPath);
             process.OutputReceived += (o, e) => output.Add(e.Data);
             (int code, string[] errors) = await runner.RunThrottled(process, urls, options, ct);
-            return new RunResult<string[]>(code == 0, errors, output.ToArray());
+            return new RunResult<string[]>(code == 0, errors, [.. output]);
         }
 
         /// <summary>
@@ -117,7 +110,7 @@ namespace YoutubeDLSharp
             string outFile = string.Empty;
             var process = new YoutubeDLProcess(YoutubeDLPath);
             if (showArgs)
-                output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs(new[] { url }, options)}\n");
+                output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs([url], options)}\n");
             else
                 output?.Report($"Starting Download: {url}");
             process.OutputReceived += (o, e) =>
@@ -130,7 +123,7 @@ namespace YoutubeDLSharp
                 }
                 output?.Report(e.Data);
             };
-            (int code, string[] errors) = await runner.RunThrottled(process, new[] { url }, options, ct, progress);
+            (int code, string[] errors) = await runner.RunThrottled(process, [url], options, ct, progress);
             return new RunResult<string>(code == 0, errors, outFile);
         }
 
@@ -151,74 +144,88 @@ namespace YoutubeDLSharp
         /// Runs a fetch of information for the given video without downloading the video.
         /// </summary>
         /// <param name="url">The URL of the video to fetch information for.</param>
+        /// <param name="flatPlaylist">True to only retrieve metadata found on the playlist page, false to load the video page and extract more metadata.</param>        
         /// <param name="videoDataCallback">The function to callback when video data has been fetched.</param>
         /// <param name="errorDataCallback">The function to callback when error data was received.</param>
-        /// <param name="fetchComments">If set to true, fetch comment data for the given video.</param>
         /// <param name="overrideOptions">Override options of the default option set for this run.</param>
         /// <param name="ct">A CancellationToken used to cancel the process.</param>
         /// <returns>A RunResult object containing a VideoData object with the requested video information.</returns>
         public async Task<RunResult<IEnumerable<VideoData>>> RunPlaylistDataFetch(string url,
+            bool flatPlaylist = false,
             Func<VideoData, Task> videoDataCallback = null,
             Func<string, Task> errorDataCallback = null,
-            bool fetchComments = false,
             OptionSet overrideOptions = null,
             CancellationToken ct = default)
         {
-            var opts = GetDownloadOptions();
+            var opts = GetSearchOptions();
+            opts.FlatPlaylist = flatPlaylist;
             opts.DumpJson = true;
-            opts.NoPlaylist = false;
-            opts.WriteComments = fetchComments;
+            opts.Quiet = true;
             if (overrideOptions != null)
             {
                 opts = opts.OverrideOptions(overrideOptions);
             }
 
             var process = new YoutubeDLProcess(YoutubeDLPath);
-            List<VideoData> videoDatas = new();
+            List<VideoData> videoDatas = [];
 
-            process.OutputReceived += async (o, e) => 
+            int callbackCount = 0;
+            if (videoDataCallback != null)
             {
-                VideoData videoData = JsonConvert.DeserializeObject<VideoData>(e.Data);
-                videoDatas.Add(videoData);
-                await videoDataCallback(videoData);
-            };
-            process.ErrorReceived += async (o, e) =>
-            {
-                if (!string.IsNullOrWhiteSpace(e.Data))
-                    await errorDataCallback(e.Data);
-            };
+                process.OutputReceived += async (o, e) => 
+                {
+                    Interlocked.Increment(ref callbackCount);
+                    VideoData videoData = JsonConvert.DeserializeObject<VideoData>(e.Data);
+                    videoDatas.Add(videoData);
+                    await videoDataCallback(videoData);
+                    Interlocked.Decrement(ref callbackCount);
+                };
+            }
 
-            (int code, string[] errors) = await runner.RunThrottled(process, new[] { url }, opts, ct);
+            if (errorDataCallback != null)
+            {
+                process.ErrorReceived += async (o, e) =>
+                {
+                    Interlocked.Increment(ref callbackCount);
+                    if (!string.IsNullOrWhiteSpace(e.Data))
+                        await errorDataCallback(e.Data);
+                    Interlocked.Decrement(ref callbackCount);
+                };
+            }
+
+            (int code, string[] errors) = await runner.RunThrottled(process, [url], options: opts, ct);
+
+            while (callbackCount > 0 && !ct.IsCancellationRequested)
+                await Task.Delay(50, ct);
+
             return new RunResult<IEnumerable<VideoData>>(code == 0, errors, videoDatas);
         }
 
         /// <summary>
         /// Runs a fetch of information for the given video without downloading the video.
         /// </summary>
-        /// <param name="url">The URL of the video to fetch information for.</param>        
-        /// <param name="flat">If set to true, does not extract information for each video in a playlist.</param>
-        /// <param name="fetchComments">If set to true, fetch comment data for the given video.</param>
+        /// <param name="url">The URL of the video to fetch information for.</param>       
+        /// <param name="flatPlaylist">True to only retrieve metadata found on the playlist page, false to load the video page and extract more metadata.</param>        
         /// <param name="overrideOptions">Override options of the default option set for this run.</param>
         /// <param name="ct">A CancellationToken used to cancel the process.</param>
         /// <returns>A RunResult object containing a VideoData object with the requested video information.</returns>
         public async Task<RunResult<VideoData>> RunVideoDataFetch(string url,
-            bool flat = true,
-            bool fetchComments = false,
+            bool flatPlaylist = false,
             OptionSet overrideOptions = null,
             CancellationToken ct = default)
         {
-            var opts = GetDownloadOptions();
-            opts.DumpSingleJson = true;
-            opts.FlatPlaylist = flat;
-            opts.WriteComments = fetchComments;
+            var opts = GetSearchOptions();
+            opts.FlatPlaylist = flatPlaylist;
             if (overrideOptions != null)
             {
                 opts = opts.OverrideOptions(overrideOptions);
             }
+
             VideoData videoData = null;
             var process = new YoutubeDLProcess(YoutubeDLPath);
             process.OutputReceived += (o, e) => videoData = JsonConvert.DeserializeObject<VideoData>(e.Data);
-            (int code, string[] errors) = await runner.RunThrottled(process, new[] { url }, opts, ct);
+            (int code, string[] errors) = await runner.RunThrottled(process, [url], opts, ct);
+            
             return new RunResult<VideoData>(code == 0, errors, videoData);
         }
 
@@ -254,7 +261,7 @@ namespace YoutubeDLSharp
             string outputFile = string.Empty;
             var process = new YoutubeDLProcess(YoutubeDLPath);
             // Report the used ytdl args
-            output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs(new[] { url }, opts)}\n");
+            output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs([url], opts)}\n");
             process.OutputReceived += (o, e) =>
             {
                 var match = rgxFile.Match(e.Data);
@@ -265,7 +272,7 @@ namespace YoutubeDLSharp
                 }
                 output?.Report(e.Data);
             };
-            (int code, string[] errors) = await runner.RunThrottled(process, new[] { url }, opts, ct, progress);
+            (int code, string[] errors) = await runner.RunThrottled(process, [url], opts, ct, progress);
             return new RunResult<string>(code == 0, errors, outputFile);
         }
 
@@ -308,7 +315,7 @@ namespace YoutubeDLSharp
             var outputFiles = new List<string>();
             var process = new YoutubeDLProcess(YoutubeDLPath);
             // Report the used ytdl args
-            output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs(new[] { url }, opts)}\n");
+            output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs([url], opts)}\n");
             process.OutputReceived += (o, e) =>
             {
                 var match = rgxFile.Match(e.Data);
@@ -320,8 +327,8 @@ namespace YoutubeDLSharp
                 }
                 output?.Report(e.Data);
             };
-            (int code, string[] errors) = await runner.RunThrottled(process, new[] { url }, opts, ct, progress);
-            return new RunResult<string[]>(code == 0, errors, outputFiles.ToArray());
+            (int code, string[] errors) = await runner.RunThrottled(process, [url], opts, ct, progress);
+            return new RunResult<string[]>(code == 0, errors, [.. outputFiles]);
         }
 
         /// <summary>
@@ -352,7 +359,7 @@ namespace YoutubeDLSharp
             var error = new List<string>();
             var process = new YoutubeDLProcess(YoutubeDLPath);
             // Report the used ytdl args
-            output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs(new[] { url }, opts)}\n");
+            output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs([url], opts)}\n");
             process.OutputReceived += (o, e) =>
             {
                 var match = rgxFile.Match(e.Data);
@@ -363,7 +370,7 @@ namespace YoutubeDLSharp
                 }
                 output?.Report(e.Data);
             };
-            (int code, string[] errors) = await runner.RunThrottled(process, new[] { url }, opts, ct, progress);
+            (int code, string[] errors) = await runner.RunThrottled(process, [url], opts, ct, progress);
             return new RunResult<string>(code == 0, errors, outputFile);
         }
 
@@ -404,7 +411,7 @@ namespace YoutubeDLSharp
             }
             var process = new YoutubeDLProcess(YoutubeDLPath);
             // Report the used ytdl args
-            output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs(new[] { url }, opts)}\n");
+            output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs([url], opts)}\n");
             process.OutputReceived += (o, e) =>
             {
                 var match = rgxFile.Match(e.Data);
@@ -416,21 +423,23 @@ namespace YoutubeDLSharp
                 }
                 output?.Report(e.Data);
             };
-            (int code, string[] errors) = await runner.RunThrottled(process, new[] { url }, opts, ct, progress);
-            return new RunResult<string[]>(code == 0, errors, outputFiles.ToArray());
+            (int code, string[] errors) = await runner.RunThrottled(process, [url], opts, ct, progress);
+            return new RunResult<string[]>(code == 0, errors, [.. outputFiles]);
         }
 
         /// <summary>
         /// Runs a YouToube search and slowly returns results as they come in.
         /// </summary>
         /// <param name="searchTerm">The URL of the playlist to be downloaded.</param>
+        /// <param name="flatPlaylist">True to only retrieve metadata found on the search page, false to load the video page and extract more metadata.</param>     
         /// <param name="maxResultCount">The maximum amount of search results to return.</param>
         /// <param name="searchNewest">Whether or not to search and return the laatest videos matching the search term. True will return latest videos regardless of relevancy.</param>
         /// <param name="overrideOptions">An OptionsSet That can override the default options.</param>
         /// <param name="millisecondsResultWait">The amount of time to wait for any more incoming results before stopping.</param>
         /// <param name="cancellationToken">A CancellationToken used to cancel the download.</param>
         /// <returns>Yields returns search results.</returns>
-        public async IAsyncEnumerable<SearchResult> Search(string searchTerm,
+        public async IAsyncEnumerable<VideoData> Search(string searchTerm,        
+            bool flatPlaylist = false,
             int maxResultCount = 10,
             bool searchNewest = false,
             OptionSet overrideOptions = null,
@@ -438,46 +447,30 @@ namespace YoutubeDLSharp
             [EnumeratorCancellation]
             CancellationToken cancellationToken = default)
         {
-            string propertySplit = "||split||";
             OptionSet optionSet = GetSearchOptions();
-            optionSet.Print = new($"%(id)s{propertySplit}%(webpage_url)s{propertySplit}%(ext)s{propertySplit}%(title)s{propertySplit}%(duration)s{propertySplit}%(filesize_approx)s{propertySplit}%(thumbnail)s{propertySplit}%(channel)s{propertySplit}%(like_count)s{propertySplit}%(upload_date)s");
+            optionSet.FlatPlaylist = flatPlaylist;
             if (overrideOptions != null)
                 optionSet = optionSet.OverrideOptions(overrideOptions);
 
             CancellationTokenSource searchCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             YoutubeDLProcess youtubeDLProcess = new(YoutubeDLPath);
-            BlockingCollection<SearchResult> searchResults = new();
+            BlockingCollection<VideoData> searchResults = [];
             youtubeDLProcess.OutputReceived += (_, dataReceivedEventArgs) =>
             {
-                IEnumerable<string> properties = dataReceivedEventArgs.Data?
-                    .Split(propertySplit, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                    .Select(property => string.IsNullOrWhiteSpace(property) || property.Equals("NA", StringComparison.InvariantCultureIgnoreCase) ? null : property);
-                if (properties == null || properties.Count() != 10)
-                    return;
+                Debug.WriteLine($"Received data: {DateTime.Now}");
+                VideoData videoData = JsonConvert.DeserializeObject<VideoData>(dataReceivedEventArgs.Data);
 
                 searchCancellationTokenSource.CancelAfter(millisecondsResultWait);
                 if (searchCancellationTokenSource.IsCancellationRequested)
                     return;
 
-                searchResults.Add(new()
-                {
-                    Id = properties.ElementAt(0),
-                    LocationUrl = properties.ElementAt(1),
-                    Container = properties.ElementAt(2),
-                    Title = properties.ElementAt(3),
-                    Runtime = double.TryParse(properties.ElementAt(4), out double runtimeParseResult) ? runtimeParseResult : null,
-                    FileSize = long.TryParse(properties.ElementAt(5), out long fileSizeParseResult) ? fileSizeParseResult : null,
-                    ThumbnailUrl = properties.ElementAt(6),
-                    Channel = properties.ElementAt(7),
-                    LikeCount = long.TryParse(properties.ElementAt(8), out long likeCountParseResult) ? likeCountParseResult : null,
-                    CreationDate = DateTime.TryParseExact(properties.ElementAt(9), "yyyyMMdd", CultureInfo.CurrentCulture, DateTimeStyles.None, out DateTime parsedCreationTime) ? parsedCreationTime : null
-                });
+                searchResults.Add(videoData);
             };
             youtubeDLProcess.ErrorReceived += (_, _) => { searchCancellationTokenSource.CancelAfter(millisecondsResultWait); };
 
             string search = $"ytsearch{(searchNewest ? "date" : string.Empty)}{maxResultCount}:{searchTerm}";
 
-            _ = youtubeDLProcess.RunAsync(new string[] { search }, optionSet, cancellationToken)
+            _ = youtubeDLProcess.RunAsync([search], optionSet, cancellationToken)
                 .ContinueWith((_) => searchCancellationTokenSource.CancelAfter(millisecondsResultWait), cancellationToken);
 
             do
@@ -517,8 +510,9 @@ namespace YoutubeDLSharp
             return new OptionSet()
             {
                 IgnoreErrors = IgnoreDownloadErrors,
-                IgnoreConfig = true,
-                Exec = "echo outfile: {}"
+                IgnoreConfig = true,                
+                DumpJson = true,
+                Quiet = true
             };
         }
 

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 using YoutubeDLSharp.Converters;
 
 namespace YoutubeDLSharp.Metadata
@@ -161,7 +159,7 @@ namespace YoutubeDLSharp.Metadata
         public string Season { get; set; }
 
         [JsonProperty("season_number")]
-        public int? SeasonNumber { get; set; }
+        public string SeasonNumber { get; set; }
 
         [JsonProperty("season_id")]
         public string SeasonId { get; set; }
@@ -170,7 +168,7 @@ namespace YoutubeDLSharp.Metadata
         public string Episode { get; set; }
 
         [JsonProperty("episode_number")]
-        public int? EpisodeNumber { get; set; }
+        public string EpisodeNumber { get; set; }
 
         [JsonProperty("episode_id")]
         public string EpisodeId { get; set; }

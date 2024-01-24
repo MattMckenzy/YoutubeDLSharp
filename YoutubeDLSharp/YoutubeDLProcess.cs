@@ -14,7 +14,11 @@ namespace YoutubeDLSharp
     /// <summary>
     /// A low-level wrapper for the yt-dlp executable.
     /// </summary>
-    public partial class YoutubeDLProcess
+    /// <remarks>
+    /// Creates a new instance of the YoutubeDLProcess class.
+    /// </remarks>
+    /// <param name="executablePath">The path to the yt-dlp executable.</param>
+    public partial class YoutubeDLProcess(string executablePath = "yt-dlp.exe")
     {
 
         [GeneratedRegex("Downloading video (\\d+) of (\\d+)", RegexOptions.Compiled)]
@@ -42,7 +46,7 @@ namespace YoutubeDLSharp
         /// <summary>
         /// The path to the yt-dlp executable.
         /// </summary>
-        public string ExecutablePath { get; set; }
+        public string ExecutablePath { get; set; } = executablePath;
 
         /// <summary>
         /// Windows only. If set to true, start process via cmd.exe to support Unicode chars.
@@ -57,15 +61,6 @@ namespace YoutubeDLSharp
         /// Occurs each time yt-dlp writes to the error output.
         /// </summary>
         public event EventHandler<DataReceivedEventArgs> ErrorReceived;
-
-        /// <summary>
-        /// Creates a new instance of the YoutubeDLProcess class.
-        /// </summary>
-        /// <param name="executablePath">The path to the yt-dlp executable.</param>
-        public YoutubeDLProcess(string executablePath = "yt-dlp.exe")
-        {
-            ExecutablePath = executablePath;
-        }
 
         internal static string ConvertToArgs(string[] urls, OptionSet options)
             => (urls != null ? string.Join(" ", urls.Select(s => $"\"{s}\"")) : string.Empty) + options.ToString();
@@ -134,41 +129,46 @@ namespace YoutubeDLSharp
                     tcsOut.SetResult(true);
                     return;
                 }
-                Match match;
-                if ((match = rgxProgress.Match(e.Data)).Success)
+
+                if (progress != null)
                 {
-                    if (match.Groups.Count > 1 && match.Groups[1].Length > 0)
+                    Match match;
+                    if ((match = rgxProgress.Match(e.Data)).Success)
                     {
-                        float progValue = float.Parse(match.Groups[1].ToString(), CultureInfo.InvariantCulture) / 100.0f;
-                        Group totalGroup = match.Groups["total"];
-                        string total = totalGroup.Success ? totalGroup.Value : null;
-                        Group speedGroup = match.Groups["speed"];
-                        string speed = speedGroup.Success ? speedGroup.Value : null;
-                        Group etaGroup = match.Groups["eta"];
-                        string eta = etaGroup.Success ? etaGroup.Value : null;
-                        progress?.Report(
-                            new DownloadProgress(
-                                DownloadState.Downloading, progress: progValue, totalDownloadSize: total, downloadSpeed: speed, eta: eta
-                            )
-                        );
+                        if (match.Groups.Count > 1 && match.Groups[1].Length > 0)
+                        {
+                            float progValue = float.Parse(match.Groups[1].ToString(), CultureInfo.InvariantCulture) / 100.0f;
+                            Group totalGroup = match.Groups["total"];
+                            string total = totalGroup.Success ? totalGroup.Value : null;
+                            Group speedGroup = match.Groups["speed"];
+                            string speed = speedGroup.Success ? speedGroup.Value : null;
+                            Group etaGroup = match.Groups["eta"];
+                            string eta = etaGroup.Success ? etaGroup.Value : null;
+                            progress?.Report(
+                                new DownloadProgress(
+                                    DownloadState.Downloading, progress: progValue, totalDownloadSize: total, downloadSpeed: speed, eta: eta
+                                )
+                            );
+                        }
+                        else
+                        {
+                            progress?.Report(new DownloadProgress(DownloadState.Downloading));
+                        }
+                        isDownloading = true;
                     }
-                    else
+                    else if ((match = rgxPlaylist.Match(e.Data)).Success)
                     {
-                        progress?.Report(new DownloadProgress(DownloadState.Downloading));
+                        var index = int.Parse(match.Groups[1].Value);
+                        progress?.Report(new DownloadProgress(DownloadState.PreProcessing, index: index));
+                        isDownloading = false;
                     }
-                    isDownloading = true;
+                    else if (isDownloading && (match = rgxPost.Match(e.Data)).Success)
+                    {
+                        progress?.Report(new DownloadProgress(DownloadState.PostProcessing, 1));
+                        isDownloading = false;
+                    }
                 }
-                else if ((match = rgxPlaylist.Match(e.Data)).Success)
-                {
-                    var index = int.Parse(match.Groups[1].Value);
-                    progress?.Report(new DownloadProgress(DownloadState.PreProcessing, index: index));
-                    isDownloading = false;
-                }
-                else if (isDownloading && (match = rgxPost.Match(e.Data)).Success)
-                {
-                    progress?.Report(new DownloadProgress(DownloadState.PostProcessing, 1));
-                    isDownloading = false;
-                }
+               
                 Debug.WriteLine("[yt-dlp] " + e.Data);
                 OutputReceived?.Invoke(this, e);
             };

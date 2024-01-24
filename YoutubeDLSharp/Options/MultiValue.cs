@@ -4,16 +4,11 @@ using System.Linq;
 
 namespace YoutubeDLSharp.Options
 {
-    public class MultiValue<T>
+    public class MultiValue<T>(params T[] values)
     {
-        private readonly List<T> values;
+        private readonly List<T> values = [.. values];
 
         public List<T> Values => values;
-        
-        public MultiValue(params T[] values)
-        {
-            this.values = values.ToList();
-        }
 
         public static implicit operator MultiValue<T>(T value)
         {
@@ -35,7 +30,7 @@ namespace YoutubeDLSharp.Options
 
         public static explicit operator T[](MultiValue<T> value)
         {
-            return value.Values.ToArray();
+            return [.. value.Values];
         }
     }
 }

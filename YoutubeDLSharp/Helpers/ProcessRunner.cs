@@ -9,18 +9,12 @@ namespace YoutubeDLSharp.Helpers
     /// <summary>
     /// Provides methods for throttled execution of processes.
     /// </summary>
-    public class ProcessRunner
+    public class ProcessRunner(byte initialCount)
     {
         private const int MAX_COUNT = 100;
-        private readonly SemaphoreSlim semaphore;
+        private readonly SemaphoreSlim semaphore = new(initialCount, MAX_COUNT);
 
-        public byte TotalCount { get; private set; }
-
-        public ProcessRunner(byte initialCount)
-        {
-            semaphore = new SemaphoreSlim(initialCount, MAX_COUNT);
-            TotalCount = initialCount;
-        }
+        public byte TotalCount { get; private set; } = initialCount;
 
         public async Task<(int, string[])> RunThrottled(YoutubeDLProcess process, string[] urls, OptionSet options,
                                        CancellationToken ct, IProgress<DownloadProgress> progress = null)
