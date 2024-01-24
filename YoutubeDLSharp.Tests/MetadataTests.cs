@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using YoutubeDLSharp.Metadata;
@@ -16,10 +17,9 @@ namespace YoutubeDLSharp.Tests
 #pragma warning restore IDE0060 // Parameter used during automated test runs
         {
             await PrepTests.DownloadBinaries();
-            ydl = new YoutubeDL
-            {
-                OutputFileTemplate = "%(title)s.%(ext)s"
-            };
+            ydl = new YoutubeDL();
+            ydl.OutputFileTemplate = "%(title)s.%(ext)s";
+            Trace.WriteLine("yt-dlp Version: " + ydl.Version);
         }
 
         [TestMethod]

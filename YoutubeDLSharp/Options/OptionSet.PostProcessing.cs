@@ -13,7 +13,7 @@ namespace YoutubeDLSharp.Options
         private Option<byte?> audioQuality = new Option<byte?>("--audio-quality");
         private Option<string> remuxVideo = new Option<string>("--remux-video");
         private Option<VideoRecodeFormat> recodeVideo = new Option<VideoRecodeFormat>("--recode-video");
-        private MultiOption<string> postprocessorArgs = new MultiOption<string>("--postprocessor-args");
+        private MultiOption<string> postprocessorArgs = new MultiOption<string>("--postprocessor-args", "--ppa");
         private Option<bool> keepVideo = new Option<bool>("-k", "--keep-video");
         private Option<bool> noKeepVideo = new Option<bool>("--no-keep-video");
         private Option<bool> postOverwrites = new Option<bool>("--post-overwrites");
@@ -22,10 +22,10 @@ namespace YoutubeDLSharp.Options
         private Option<bool> noEmbedSubs = new Option<bool>("--no-embed-subs");
         private Option<bool> embedThumbnail = new Option<bool>("--embed-thumbnail");
         private Option<bool> noEmbedThumbnail = new Option<bool>("--no-embed-thumbnail");
-        private Option<bool> embedMetadata = new Option<bool>("--embed-metadata");
-        private Option<bool> noEmbedMetadata = new Option<bool>("--no-embed-metadata");
-        private Option<bool> embedChapters = new Option<bool>("--embed-chapters");
-        private Option<bool> noEmbedChapters = new Option<bool>("--no-embed-chapters");
+        private Option<bool> embedMetadata = new Option<bool>("--embed-metadata", "--add-metadata");
+        private Option<bool> noEmbedMetadata = new Option<bool>("--no-embed-metadata", "--no-add-metadata");
+        private Option<bool> embedChapters = new Option<bool>("--embed-chapters", "--add-chapters");
+        private Option<bool> noEmbedChapters = new Option<bool>("--no-embed-chapters", "--no-add-chapters");
         private Option<bool> embedInfoJson = new Option<bool>("--embed-info-json");
         private Option<bool> noEmbedInfoJson = new Option<bool>("--no-embed-info-json");
         private Option<string> parseMetadata = new Option<string>("--parse-metadata");
@@ -36,7 +36,7 @@ namespace YoutubeDLSharp.Options
         private Option<string> ffmpegLocation = new Option<string>("--ffmpeg-location");
         private MultiOption<string> exec = new MultiOption<string>("--exec");
         private Option<bool> noExec = new Option<bool>("--no-exec");
-        private Option<string> convertSubs = new Option<string>("--convert-subs");
+        private Option<string> convertSubs = new Option<string>("--convert-subs", "--convert-subtitles");
         private Option<string> convertThumbnails = new Option<string>("--convert-thumbnails");
         private Option<bool> splitChapters = new Option<bool>("--split-chapters");
         private Option<bool> noSplitChapters = new Option<bool>("--no-split-chapters");
@@ -69,11 +69,11 @@ namespace YoutubeDLSharp.Options
         /// <summary>
         /// Remux the video into another container if
         /// necessary (currently supported: avi, flv,
-        /// mkv, mov, mp4, webm, aac, aiff, alac, flac,
-        /// m4a, mka, mp3, ogg, opus, vorbis, wav). If
-        /// target container does not support the
-        /// video/audio codec, remuxing will fail. You
-        /// can specify multiple rules; e.g.
+        /// gif, mkv, mov, mp4, webm, aac, aiff, alac,
+        /// flac, m4a, mka, mp3, ogg, opus, vorbis,
+        /// wav). If target container does not support
+        /// the video/audio codec, remuxing will fail.
+        /// You can specify multiple rules; e.g.
         /// &quot;aac&gt;m4a/mov&gt;mp4/mkv&quot; will remux aac to m4a,
         /// mov to mp4 and anything else to mkv
         /// </summary>
@@ -181,14 +181,17 @@ namespace YoutubeDLSharp.Options
         /// <summary>
         /// Parse additional metadata like title/artist
         /// from other fields; see &quot;MODIFYING METADATA&quot;
-        /// for details
+        /// for details. Supported values of &quot;WHEN&quot; are
+        /// the same as that of --use-postprocessor
+        /// (default: pre_process)
         /// </summary>
         public string ParseMetadata { get => parseMetadata.Value; set => parseMetadata.Value = value; }
         /// <summary>
-        /// GEX REPLACE
         /// Replace text in a metadata field using the
         /// given regex. This option can be used
-        /// multiple times
+        /// multiple times. Supported values of &quot;WHEN&quot;
+        /// are the same as that of --use-postprocessor
+        /// (default: pre_process)
         /// </summary>
         public MultiValue<string> ReplaceInMetadata { get => replaceInMetadata.Value; set => replaceInMetadata.Value = value; }
         /// <summary>
@@ -225,16 +228,13 @@ namespace YoutubeDLSharp.Options
         public string FfmpegLocation { get => ffmpegLocation.Value; set => ffmpegLocation.Value = value; }
         /// <summary>
         /// Execute a command, optionally prefixed with
-        /// when to execute it (after_move if
-        /// unspecified), separated by a &quot;:&quot;. Supported
-        /// values of &quot;WHEN&quot; are the same as that of
-        /// --use-postprocessor. Same syntax as the
-        /// output template can be used to pass any
-        /// field as arguments to the command. After
-        /// download, an additional field &quot;filepath&quot;
-        /// that contains the final path of the
-        /// downloaded file is also available, and if no
-        /// fields are passed, %(filepath)q is appended
+        /// when to execute it, separated by a &quot;:&quot;.
+        /// Supported values of &quot;WHEN&quot; are the same as
+        /// that of --use-postprocessor (default:
+        /// after_move). Same syntax as the output
+        /// template can be used to pass any field as
+        /// arguments to the command. If no fields are
+        /// passed, %(filepath,_filename|)q is appended
         /// to the end of the command. This option can
         /// be used multiple times
         /// </summary>
@@ -295,7 +295,6 @@ namespace YoutubeDLSharp.Options
         /// </summary>
         public bool NoForceKeyframesAtCuts { get => noForceKeyframesAtCuts.Value; set => noForceKeyframesAtCuts.Value = value; }
         /// <summary>
-        /// 
         /// The (case sensitive) name of plugin
         /// postprocessors to be enabled, and
         /// (optionally) arguments to be passed to it,
@@ -305,14 +304,15 @@ namespace YoutubeDLSharp.Options
         /// postprocessor is invoked. It can be one of
         /// &quot;pre_process&quot; (after video extraction),
         /// &quot;after_filter&quot; (after video passes filter),
-        /// &quot;before_dl&quot; (before each video download),
-        /// &quot;post_process&quot; (after each video download;
-        /// default), &quot;after_move&quot; (after moving video
-        /// file to it&#x27;s final locations), &quot;after_video&quot;
-        /// (after downloading and processing all
-        /// formats of a video), or &quot;playlist&quot; (at end
-        /// of playlist). This option can be used
-        /// multiple times to add different
+        /// &quot;video&quot; (after --format; before
+        /// --print/--output), &quot;before_dl&quot; (before each
+        /// video download), &quot;post_process&quot; (after each
+        /// video download; default), &quot;after_move&quot;
+        /// (after moving video file to it&#x27;s final
+        /// locations), &quot;after_video&quot; (after downloading
+        /// and processing all formats of a video), or
+        /// &quot;playlist&quot; (at end of playlist). This option
+        /// can be used multiple times to add different
         /// postprocessors
         /// </summary>
         public MultiValue<string> UsePostprocessor { get => usePostprocessor.Value; set => usePostprocessor.Value = value; }

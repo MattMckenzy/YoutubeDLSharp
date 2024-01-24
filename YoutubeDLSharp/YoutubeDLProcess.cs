@@ -62,8 +62,20 @@ namespace YoutubeDLSharp
         /// </summary>
         public event EventHandler<DataReceivedEventArgs> ErrorReceived;
 
-        internal static string ConvertToArgs(string[] urls, OptionSet options)
-            => (urls != null ? string.Join(" ", urls.Select(s => $"\"{s}\"")) : string.Empty) + options.ToString();
+        /// <summary>
+        /// Creates a new instance of the YoutubeDLProcess class.
+        /// </summary>
+        /// <param name="executablePath">The path to the yt-dlp executable.</param>
+        public YoutubeDLProcess(string executablePath = "yt-dlp.exe")
+        {
+            this.ExecutablePath = executablePath;
+        }
+
+        internal string ConvertToArgs(string[] urls, OptionSet options)
+            => options.ToString() + " -- " + (urls != null ? String.Join(" ", urls.Select(s => $"\"{s}\"")) : String.Empty);
+
+        internal void RedirectToError(DataReceivedEventArgs e)
+            => ErrorReceived?.Invoke(this, e);
 
         /// <summary>
         /// Invokes yt-dlp with the specified parameters and options.
@@ -95,14 +107,13 @@ namespace YoutubeDLSharp
                 RedirectStandardError = true,
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8,
-
             };
             if (OSHelper.IsWindows && UseWindowsEncodingWorkaround)
             {
                 startInfo.FileName = "cmd.exe";
                 string runCommand;
-                if (!string.IsNullOrEmpty(PythonPath))
-                    runCommand = $"{PythonPath} \"{ExecutablePath}\" {ConvertToArgs(urls, options)}";
+                if (!String.IsNullOrEmpty(PythonPath))
+                    runCommand = $"\"{PythonPath}\" \"{ExecutablePath}\" {ConvertToArgs(urls, options)}";
                 else
                     runCommand = $"\"{ExecutablePath}\" {ConvertToArgs(urls, options)}";
                 startInfo.Arguments = $"/C chcp 65001 >nul 2>&1 && {runCommand}";

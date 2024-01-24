@@ -266,4 +266,4 @@ __pycache__/
 *.exe
 /YoutubeDLSharp/Options/*.txt
 /YoutubeDLSharp/Options/*.ps1
-/YtDlSharpTestCli
+/CLIDemo

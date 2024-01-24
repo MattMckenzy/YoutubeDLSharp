@@ -9,17 +9,18 @@ namespace YoutubeDLSharp.Options
     public partial class OptionSet
     {
         private Option<bool> quiet = new Option<bool>("-q", "--quiet");
+        private Option<bool> noQuiet = new Option<bool>("--no-quiet");
         private Option<bool> noWarnings = new Option<bool>("--no-warnings");
         private Option<bool> simulate = new Option<bool>("-s", "--simulate");
         private Option<bool> noSimulate = new Option<bool>("--no-simulate");
         private Option<bool> ignoreNoFormatsError = new Option<bool>("--ignore-no-formats-error");
         private Option<bool> noIgnoreNoFormatsError = new Option<bool>("--no-ignore-no-formats-error");
-        private Option<bool> skipDownload = new Option<bool>("--skip-download");
+        private Option<bool> skipDownload = new Option<bool>("--skip-download", "--no-download");
         private MultiOption<string> print = new MultiOption<string>("-O", "--print");
         private MultiOption<string> printToFile = new MultiOption<string>("--print-to-file");
         private Option<bool> dumpJson = new Option<bool>("-j", "--dump-json");
         private Option<bool> dumpSingleJson = new Option<bool>("-J", "--dump-single-json");
-        private Option<bool> forceWriteArchive = new Option<bool>("--force-write-archive");
+        private Option<bool> forceWriteArchive = new Option<bool>("--force-write-archive", "--force-download-archive");
         private Option<bool> newline = new Option<bool>("--newline");
         private Option<bool> noProgress = new Option<bool>("--no-progress");
         private Option<bool> progress = new Option<bool>("--progress");
@@ -35,6 +36,10 @@ namespace YoutubeDLSharp.Options
         /// print the log to stderr
         /// </summary>
         public bool Quiet { get => quiet.Value; set => quiet.Value = value; }
+        /// <summary>
+        /// Deactivate quiet mode. (Default)
+        /// </summary>
+        public bool NoQuiet { get => noQuiet.Value; set => noQuiet.Value = value; }
         /// <summary>
         /// Ignore warnings
         /// </summary>
@@ -71,7 +76,7 @@ namespace YoutubeDLSharp.Options
         /// screen, optionally prefixed with when to
         /// print it, separated by a &quot;:&quot;. Supported
         /// values of &quot;WHEN&quot; are the same as that of
-        /// --use-postprocessor, and &quot;video&quot; (default).
+        /// --use-postprocessor (default: video).
         /// Implies --quiet. Implies --simulate unless
         /// --no-simulate or later stages of WHEN are
         /// used. This option can be used multiple times
@@ -125,7 +130,6 @@ namespace YoutubeDLSharp.Options
         /// </summary>
         public bool ConsoleTitle { get => consoleTitle.Value; set => consoleTitle.Value = value; }
         /// <summary>
-        /// PLATE
         /// Template for progress outputs, optionally
         /// prefixed with one of &quot;download:&quot; (default),
         /// &quot;download-title:&quot; (the console title),
