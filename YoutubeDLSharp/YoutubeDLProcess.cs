@@ -62,16 +62,7 @@ namespace YoutubeDLSharp
         /// </summary>
         public event EventHandler<DataReceivedEventArgs> ErrorReceived;
 
-        /// <summary>
-        /// Creates a new instance of the YoutubeDLProcess class.
-        /// </summary>
-        /// <param name="executablePath">The path to the yt-dlp executable.</param>
-        public YoutubeDLProcess(string executablePath = "yt-dlp.exe")
-        {
-            this.ExecutablePath = executablePath;
-        }
-
-        internal string ConvertToArgs(string[] urls, OptionSet options)
+        internal static string ConvertToArgs(string[] urls, OptionSet options)
             => options.ToString() + " -- " + (urls != null ? String.Join(" ", urls.Select(s => $"\"{s}\"")) : String.Empty);
 
         internal void RedirectToError(DataReceivedEventArgs e)

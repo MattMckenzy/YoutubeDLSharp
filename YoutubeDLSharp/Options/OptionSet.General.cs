@@ -13,7 +13,6 @@ namespace YoutubeDLSharp.Options
         private Option<bool> update = new Option<bool>("-U", "--update");
         private Option<string> updateTo = new Option<string>("--update-to");
         private Option<bool> noUpdate = new Option<bool>("--no-update");
-        private Option<string> updateTo = new Option<string>("--update-to");
         private Option<bool> ignoreErrors = new Option<bool>("-i", "--ignore-errors");
         private Option<bool> noAbortOnError = new Option<bool>("--no-abort-on-error");
         private Option<bool> abortOnError = new Option<bool>("--abort-on-error", "--no-ignore-errors");
@@ -58,15 +57,6 @@ namespace YoutubeDLSharp.Options
         /// Do not check for updates (default)
         /// </summary>
         public bool NoUpdate { get => noUpdate.Value; set => noUpdate.Value = value; }
-        /// <summary>
-        /// Upgrade/downgrade to a specific version.
-        /// CHANNEL can be a repository as well. CHANNEL
-        /// and TAG default to &quot;stable&quot; and &quot;latest&quot;
-        /// respectively if omitted; See &quot;UPDATE&quot; for
-        /// details. Supported channels: stable,
-        /// nightly, master
-        /// </summary>
-        public string UpdateTo { get => updateTo.Value; set => updateTo.Value = value; }
         /// <summary>
         /// Ignore download and postprocessing errors.
         /// The download will be considered successful
