@@ -18,7 +18,7 @@ namespace YoutubeDLSharp
     /// Creates a new instance of the YoutubeDLProcess class.
     /// </remarks>
     /// <param name="executablePath">The path to the yt-dlp executable.</param>
-    public partial class YoutubeDLProcess(string executablePath = "yt-dlp.exe")
+    public partial class YoutubeDLProcess(string executablePath = "yt-dlp.exe") : IDisposable
     {
 
         [GeneratedRegex("Downloading video (\\d+) of (\\d+)", RegexOptions.Compiled)]
@@ -35,6 +35,7 @@ namespace YoutubeDLSharp
         private static partial Regex PostProcessingRegex();
         // the regex used to match the beginning of post-processing.
         private static readonly Regex rgxPost = PostProcessingRegex();
+        private bool disposedValue;
 
         /// <summary>
         /// The path to the Python interpreter.
@@ -63,7 +64,7 @@ namespace YoutubeDLSharp
         public event EventHandler<DataReceivedEventArgs> ErrorReceived;
 
         internal static string ConvertToArgs(string[] urls, OptionSet options)
-            => options.ToString() + " -- " + (urls != null ? String.Join(" ", urls.Select(s => $"\"{s}\"")) : String.Empty);
+            => options.ToString() + " -- " + (urls != null ? string.Join(" ", urls.Select(s => $"\"{s}\"")) : string.Empty);
 
         internal void RedirectToError(DataReceivedEventArgs e)
             => ErrorReceived?.Invoke(this, e);
@@ -88,9 +89,9 @@ namespace YoutubeDLSharp
         public async Task<int> RunAsync(string[] urls, OptionSet options,
             CancellationToken ct, IProgress<DownloadProgress> progress = null)
         {
-            var tcs = new TaskCompletionSource<int>();
-            var process = new Process();
-            var startInfo = new ProcessStartInfo()
+            TaskCompletionSource<int> tcs = new ();
+            using Process process = new ();
+            ProcessStartInfo startInfo = new ()
             {
                 CreateNoWindow = true,
                 UseShellExecute = false,
@@ -99,11 +100,12 @@ namespace YoutubeDLSharp
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8,
             };
+
             if (OSHelper.IsWindows && UseWindowsEncodingWorkaround)
             {
                 startInfo.FileName = "cmd.exe";
                 string runCommand;
-                if (!String.IsNullOrEmpty(PythonPath))
+                if (!string.IsNullOrEmpty(PythonPath))
                     runCommand = $"\"{PythonPath}\" \"{ExecutablePath}\" {ConvertToArgs(urls, options)}";
                 else
                     runCommand = $"\"{ExecutablePath}\" {ConvertToArgs(urls, options)}";
@@ -119,9 +121,10 @@ namespace YoutubeDLSharp
                 startInfo.FileName = ExecutablePath;
                 startInfo.Arguments = ConvertToArgs(urls, options);
             }
+
             process.EnableRaisingEvents = true;
             process.StartInfo = startInfo;
-            var tcsOut = new TaskCompletionSource<bool>();
+            TaskCompletionSource<bool> tcsOut = new();
             // this variable is used for tracking download states
             bool isDownloading = false;
             process.OutputDataReceived += (o, e) =>
@@ -174,7 +177,7 @@ namespace YoutubeDLSharp
                 Debug.WriteLine("[yt-dlp] " + e.Data);
                 OutputReceived?.Invoke(this, e);
             };
-            var tcsError = new TaskCompletionSource<bool>();
+            TaskCompletionSource<bool> tcsError = new();
             process.ErrorDataReceived += (o, e) =>
             {
                 if (e.Data == null)
@@ -210,7 +213,34 @@ namespace YoutubeDLSharp
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
             progress?.Report(new DownloadProgress(DownloadState.PreProcessing));
+
             return await tcs.Task;
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    if (OutputReceived != null)
+                        foreach(Delegate delegateEvent in OutputReceived.GetInvocationList())
+                            OutputReceived -= (EventHandler<DataReceivedEventArgs>)delegateEvent;
+                    
+                    if (ErrorReceived != null)
+                        foreach(Delegate delegateEvent in ErrorReceived.GetInvocationList())
+                            ErrorReceived -= (EventHandler<DataReceivedEventArgs>)delegateEvent;
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -62,7 +62,7 @@ namespace YoutubeDLSharp.Options
             }
         }
 
-        public override string ToString() => String.Join(" ", ToStringCollection());
+        public override string ToString() => string.Join(" ", ToStringCollection());
 
         public IEnumerable<string> ToStringCollection()
         {

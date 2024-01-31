@@ -76,7 +76,7 @@ namespace YoutubeDLSharp.Options
 
         public override string ToString()
         {
-            if (!IsSet) return String.Empty;
+            if (!IsSet) return string.Empty;
             string val = Utils.OptionValueToString(Value);
             return DefaultOptionString + val;
         }

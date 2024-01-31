@@ -38,14 +38,14 @@ namespace YoutubeDLSharp
         public static string Sanitize(string s, bool restricted = false)
         {
             rgxTimestamp.Replace(s, m => m.Groups[0].Value.Replace(':', '_'));
-            var result = String.Join("", s.Select(c => SanitizeChar(c, restricted)));
+            var result = string.Join("", s.Select(c => SanitizeChar(c, restricted)));
             result = result.Replace("__", "_").Trim('_');
             if (restricted && result.StartsWith("-_"))
                 result = result.Substring(2);
             if (result.StartsWith("-"))
                 result = string.Concat("_", result.AsSpan(1));
             result = result.TrimStart('.');
-            if (String.IsNullOrWhiteSpace(result))
+            if (string.IsNullOrWhiteSpace(result))
                 result = "_";
             return result;
         }

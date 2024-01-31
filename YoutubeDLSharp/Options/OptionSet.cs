@@ -26,7 +26,7 @@ namespace YoutubeDLSharp.Options
             File.WriteAllLines(path, GetOptionFlags());
         }
 
-        public override string ToString() => " " + String.Join(" ", GetOptionFlags());
+        public override string ToString() => " " + string.Join(" ", GetOptionFlags());
 
         /// <summary>
         /// Returns an enumerable of all option flags.

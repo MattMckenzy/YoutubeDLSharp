@@ -81,6 +81,8 @@ namespace YoutubeDLSharp
         /// <returns></returns>
         public async Task SetMaxNumberOfProcesses(byte count) => await runner.SetTotalCount(count);
 
+        public int RemainingProcessesCount { get { return runner.RemainingCount; } }
+
         #region Process methods
 
         /// <summary>
@@ -92,8 +94,13 @@ namespace YoutubeDLSharp
         /// <returns>A RunResult object containing the output of yt-dlp as an array of string.</returns>
         public async Task<RunResult<string[]>> RunWithOptions(string[] urls, OptionSet options, CancellationToken ct)
         {
-            var output = new List<string>();
-            var process = CreateYoutubeDLProcess();
+            List<string> output = [];
+
+            using YoutubeDLProcess process = new (YoutubeDLPath)
+            {
+                PythonPath = PythonInterpreterPath,
+            };
+
             process.OutputReceived += (o, e) => output.Add(e.Data);
             (int code, string[] errors) = await runner.RunThrottled(process, urls, options, ct);
             return new RunResult<string[]>(code == 0, errors, [.. output]);
@@ -112,12 +119,18 @@ namespace YoutubeDLSharp
         public async Task<RunResult<string>> RunWithOptions(string url, OptionSet options, IProgress<DownloadProgress> progress = null,
              IProgress<string> output = null, bool showArgs = true, CancellationToken ct = default)
         {
-            string outFile = string.Empty;
-            var process = CreateYoutubeDLProcess();
+            string outFile = string.Empty;           
+            
+            using YoutubeDLProcess process = new (YoutubeDLPath)
+            {
+                PythonPath = PythonInterpreterPath,
+            };
+
             if (showArgs)
                 output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs([url], options)}\n");
             else
                 output?.Report($"Starting Download: {url}");
+
             process.OutputReceived += (o, e) =>
             {
                 var match = rgxFilePostProc.Match(e.Data);
@@ -128,6 +141,7 @@ namespace YoutubeDLSharp
                 }
                 output?.Report(e.Data);
             };
+
             (int code, string[] errors) = await runner.RunThrottled(process, [url], options, ct, progress);
             return new RunResult<string>(code == 0, errors, outFile);
         }
@@ -138,8 +152,13 @@ namespace YoutubeDLSharp
         /// <returns>The output of yt-dlp as string.</returns>
         public async Task<string> RunUpdate(string updateTo = null)
         {
-            string output = String.Empty;
-            var process = CreateYoutubeDLProcess();
+            string output = string.Empty;           
+            
+            using YoutubeDLProcess process = new (YoutubeDLPath)
+            {
+                PythonPath = PythonInterpreterPath,
+            };
+
             process.OutputReceived += (o, e) => output = e.Data;
             await process.RunAsync(null, string.IsNullOrWhiteSpace(updateTo) ? new OptionSet() { Update = true } : new OptionSet() { UpdateTo = updateTo });
             return output;
@@ -162,7 +181,7 @@ namespace YoutubeDLSharp
             OptionSet overrideOptions = null,
             CancellationToken ct = default)
         {
-            var opts = GetSearchOptions();
+            OptionSet opts = GetSearchOptions();
             opts.FlatPlaylist = flatPlaylist;
             opts.DumpJson = true;
             opts.Quiet = true;
@@ -171,7 +190,11 @@ namespace YoutubeDLSharp
                 opts = opts.OverrideOptions(overrideOptions);
             }
 
-            var process = new YoutubeDLProcess(YoutubeDLPath);
+            using YoutubeDLProcess process = new (YoutubeDLPath)
+            {
+                PythonPath = PythonInterpreterPath,
+            };
+
             List<VideoData> videoDatas = [];
 
             int callbackCount = 0;
@@ -219,7 +242,7 @@ namespace YoutubeDLSharp
             OptionSet overrideOptions = null,
             CancellationToken ct = default)
         {
-            var opts = GetSearchOptions();
+            OptionSet opts = GetSearchOptions();
             opts.FlatPlaylist = flatPlaylist;
             if (overrideOptions != null)
             {
@@ -227,7 +250,12 @@ namespace YoutubeDLSharp
             }
 
             VideoData videoData = null;
-            var process = CreateYoutubeDLProcess();
+
+            using YoutubeDLProcess process = new (YoutubeDLPath)
+            {
+                PythonPath = PythonInterpreterPath,
+            };
+
             process.OutputReceived += (o, e) =>
             {
                 try
@@ -264,7 +292,7 @@ namespace YoutubeDLSharp
             IProgress<DownloadProgress> progress = null,
             CancellationToken ct = default)
         {
-            var opts = GetDownloadOptions();
+            OptionSet opts = GetDownloadOptions();
             opts.Format = format;
             opts.MergeOutputFormat = mergeFormat;
             opts.RecodeVideo = recodeFormat;
@@ -272,8 +300,14 @@ namespace YoutubeDLSharp
             {
                 opts = opts.OverrideOptions(overrideOptions);
             }
-            string outputFile = String.Empty;
-            var process = CreateYoutubeDLProcess();
+
+            string outputFile = string.Empty;
+
+            using YoutubeDLProcess process = new (YoutubeDLPath)
+            {
+                PythonPath = PythonInterpreterPath,
+            };
+
             // Report the used ytdl args
             output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs([url], opts)}\n");
             process.OutputReceived += (o, e) =>
@@ -286,6 +320,7 @@ namespace YoutubeDLSharp
                 }
                 output?.Report(e.Data);
             };
+
             (int code, string[] errors) = await runner.RunThrottled(process, [url], opts, ct, progress);
             return new RunResult<string>(code == 0, errors, outputFile);
         }
@@ -314,7 +349,7 @@ namespace YoutubeDLSharp
             IProgress<DownloadProgress> progress = null,
             CancellationToken ct = default)
         {
-            var opts = GetDownloadOptions();
+            OptionSet opts = GetDownloadOptions();
             opts.NoPlaylist = false;
             if (items != null)
                 opts.PlaylistItems = string.Join(",", items);
@@ -326,8 +361,14 @@ namespace YoutubeDLSharp
             {
                 opts = opts.OverrideOptions(overrideOptions);
             }
-            var outputFiles = new List<string>();
-            var process = CreateYoutubeDLProcess();
+
+            List<string> outputFiles = [];
+
+            using YoutubeDLProcess process = new (YoutubeDLPath)
+            {
+                PythonPath = PythonInterpreterPath,
+            };
+
             // Report the used ytdl args
             output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs([url], opts)}\n");
             process.OutputReceived += (o, e) =>
@@ -341,6 +382,7 @@ namespace YoutubeDLSharp
                 }
                 output?.Report(e.Data);
             };
+
             (int code, string[] errors) = await runner.RunThrottled(process, [url], opts, ct, progress);
             return new RunResult<string[]>(code == 0, errors, [.. outputFiles]);
         }
@@ -361,7 +403,7 @@ namespace YoutubeDLSharp
             IProgress<DownloadProgress> progress = null,
             CancellationToken ct = default)
         {
-            var opts = GetDownloadOptions();
+            OptionSet opts = GetDownloadOptions();
             opts.Format = "bestaudio/best";
             opts.ExtractAudio = true;
             opts.AudioFormat = format;
@@ -369,9 +411,15 @@ namespace YoutubeDLSharp
             {
                 opts = opts.OverrideOptions(overrideOptions);
             }
+
             string outputFile = string.Empty;
-            var error = new List<string>();
-            var process = CreateYoutubeDLProcess();
+            List<string> error = [];
+
+            using YoutubeDLProcess process = new (YoutubeDLPath)
+            {
+                PythonPath = PythonInterpreterPath,
+            };
+
             // Report the used ytdl args
             output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs([url], opts)}\n");
             process.OutputReceived += (o, e) =>
@@ -384,6 +432,7 @@ namespace YoutubeDLSharp
                 }
                 output?.Report(e.Data);
             };
+
             (int code, string[] errors) = await runner.RunThrottled(process, [url], opts, ct, progress);
             return new RunResult<string>(code == 0, errors, outputFile);
         }
@@ -409,8 +458,9 @@ namespace YoutubeDLSharp
             IProgress<DownloadProgress> progress = null,
             CancellationToken ct = default)
         {
-            var outputFiles = new List<string>();
-            var opts = GetDownloadOptions();
+            List<string> outputFiles = [];
+            OptionSet opts = GetDownloadOptions();
+
             opts.NoPlaylist = false;
             if (items != null)
                 opts.PlaylistItems = string.Join(",", items);
@@ -423,12 +473,17 @@ namespace YoutubeDLSharp
             {
                 opts = opts.OverrideOptions(overrideOptions);
             }
-            var process = CreateYoutubeDLProcess();
+
+            using YoutubeDLProcess process = new (YoutubeDLPath)
+            {
+                PythonPath = PythonInterpreterPath,
+            };
+
             // Report the used ytdl args
             output?.Report($"Arguments: {YoutubeDLProcess.ConvertToArgs([url], opts)}\n");
             process.OutputReceived += (o, e) =>
             {
-                var match = rgxFile.Match(e.Data);
+                Match match = rgxFile.Match(e.Data);
                 if (match.Success)
                 {
                     var file = match.Groups[1].ToString().Trim('"');
@@ -437,6 +492,7 @@ namespace YoutubeDLSharp
                 }
                 output?.Report(e.Data);
             };
+
             (int code, string[] errors) = await runner.RunThrottled(process, [url], opts, ct, progress);
             return new RunResult<string[]>(code == 0, errors, [.. outputFiles]);
         }
@@ -467,9 +523,14 @@ namespace YoutubeDLSharp
                 optionSet = optionSet.OverrideOptions(overrideOptions);
 
             CancellationTokenSource searchCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            YoutubeDLProcess youtubeDLProcess = new(YoutubeDLPath);
+
+            using YoutubeDLProcess process = new (YoutubeDLPath)
+            {
+                PythonPath = PythonInterpreterPath,
+            };
+
             BlockingCollection<VideoData> searchResults = [];
-            youtubeDLProcess.OutputReceived += (_, dataReceivedEventArgs) =>
+            process.OutputReceived += (_, dataReceivedEventArgs) =>
             {
                 Debug.WriteLine($"Received data: {DateTime.Now}");
                 VideoData videoData = JsonConvert.DeserializeObject<VideoData>(dataReceivedEventArgs.Data);
@@ -480,11 +541,11 @@ namespace YoutubeDLSharp
 
                 searchResults.Add(videoData);
             };
-            youtubeDLProcess.ErrorReceived += (_, _) => { searchCancellationTokenSource.CancelAfter(millisecondsResultWait); };
+            process.ErrorReceived += (_, _) => { searchCancellationTokenSource.CancelAfter(millisecondsResultWait); };
 
             string search = $"ytsearch{(searchNewest ? "date" : string.Empty)}{maxResultCount}:{searchTerm}";
 
-            _ = youtubeDLProcess.RunAsync([search], optionSet, cancellationToken)
+            _ = process.RunAsync([search], optionSet, cancellationToken)
                 .ContinueWith((_) => searchCancellationTokenSource.CancelAfter(millisecondsResultWait), cancellationToken);
 
             do
@@ -531,13 +592,5 @@ namespace YoutubeDLSharp
         }
 
         #endregion
-
-        private YoutubeDLProcess CreateYoutubeDLProcess()
-        {
-            return new YoutubeDLProcess(YoutubeDLPath)
-            {
-                PythonPath = PythonInterpreterPath,
-            };
-        }
     }
 }

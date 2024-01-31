@@ -32,7 +32,7 @@ namespace YoutubeDLSharp.Options
         {
             string val;
             if (value is bool)
-                val = String.Empty;
+                val = string.Empty;
             else if (value is Enum)
                 val = $" \"{value.ToString().ToLower()}\"";
             else if (value is DateTime dateTime)

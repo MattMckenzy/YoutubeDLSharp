@@ -16,6 +16,8 @@ namespace YoutubeDLSharp.Helpers
 
         public byte TotalCount { get; private set; } = initialCount;
 
+        public int RemainingCount { get { return semaphore.CurrentCount; } }
+
         public async Task<(int, string[])> RunThrottled(YoutubeDLProcess process, string[] urls, OptionSet options,
                                        CancellationToken ct, IProgress<DownloadProgress> progress = null)
         {
